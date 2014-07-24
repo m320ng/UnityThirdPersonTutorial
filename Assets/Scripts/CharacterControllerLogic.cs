@@ -13,24 +13,44 @@ public class CharacterControllerLogic : MonoBehaviour {
     private float horizontal = 0.0f;
     private float vertical = 0.0f;
 
+    private float rotationDegreePerSecond = 120f;
+
+    private AnimatorStateInfo stateInfo;
+    private AnimatorTransitionInfo transInfo;
+
+    private int hashLocomotionID = 0;
+
 	void Start () {
         anim = GetComponent<Animator>();
         if (anim.layerCount > 1) {
             anim.SetLayerWeight(1, 1);
         }
+
         gamecam = Camera.main.GetComponent<ThirdPersonCamera>();
+
+        hashLocomotionID = Animator.StringToHash("Base Layer.Locomotion");
 	}
 	
 	void Update () {
+        stateInfo = anim.GetCurrentAnimatorStateInfo(0);
+
         horizontal = Input.GetAxis("Horizontal");
         vertical = Input.GetAxis("Vertical");
 
-        speed = new Vector2(horizontal, vertical).sqrMagnitude;
+        //speed = new Vector2(horizontal, vertical).sqrMagnitude;
 
         StickToWorldspace(transform, gamecam.transform, ref direction, ref speed);
    
         anim.SetFloat("Speed", speed);
         anim.SetFloat("Direction", horizontal, directionDampTime, Time.deltaTime);
+    }
+
+    void FixedUpdate() {
+        if (IsInLocomotion() /*&& ((direction >= 0 && horizontal >= 0) || (direction < 0 && horizontal < 0))*/) {
+            Vector3 rotationAmount = Vector3.Lerp(Vector3.zero, new Vector3(0f, rotationDegreePerSecond * (horizontal < 0f ? -1f : 1f), 0f), Mathf.Abs(horizontal));
+            Quaternion deltaRotation = Quaternion.Euler(rotationAmount * Time.deltaTime);
+            transform.rotation = (transform.rotation * deltaRotation);
+        }
     }
 
     void StickToWorldspace(Transform root, Transform cam, ref float direction, ref float speed) {
@@ -55,5 +75,9 @@ public class CharacterControllerLogic : MonoBehaviour {
         angleRootToMove /= 180f;
 
         direction = angleRootToMove * directionSpeed;
+    }
+
+    public bool IsInLocomotion() {
+        return stateInfo.nameHash == hashLocomotionID;
     }
 }
